@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Instagram Hashtag Feed</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <h1>Instagram Hashtag Feed</h1>
+
+  <!-- Admin panel -->
+  <section class="admin">
+    <h2>Monitored Hashtags</h2>
+    <div class="admin-row">
+      <input type="text" id="hashtag-input" placeholder="e.g. golang" maxlength="50">
+      <button class="add-btn" onclick="addHashtag()">Add</button>
+    </div>
+    <div class="pills" id="pills">
+      {{range .Hashtags}}
+      <span class="pill">
+        #{{.}}
+        <button onclick="removeHashtag('{{.}}')" title="Stop monitoring">×</button>
+      </span>
+      {{else}}
+      <span style="font-size:.8rem;color:#aaa">No hashtags yet.</span>
+      {{end}}
+    </div>
+  </section>
+
+  <p class="status-bar" id="status">Last refreshed: {{.LastUpdate.Format "15:04:05"}}</p>
+
+  <!-- Card grid — populated server-side on first load, then updated via JS -->
+  <main class="card-grid" id="card-grid">
+    {{range .Posts}}
+    <article class="card">
+      {{if eq .MediaType "IMAGE"}}
+        <img src="{{.MediaURL}}" alt="Instagram post" loading="lazy">
+      {{else}}
+        <div class="media-placeholder">{{.MediaType}}</div>
+      {{end}}
+      <div class="card-body">
+        <span class="badge">#{{.Hashtag}}</span>
+        <p class="caption">{{truncate .Caption 120}}</p>
+        <div class="card-meta">
+          <time datetime="{{.Timestamp.Format "2006-01-02T15:04:05Z07:00"}}">
+            {{.Timestamp.Format "Jan 2, 2006"}}
+          </time>
+          <a href="{{.Permalink}}" target="_blank" rel="noopener noreferrer">View post</a>
+        </div>
+      </div>
+    </article>
+    {{else}}
+    <p class="empty">No posts yet — add a hashtag above to start.</p>
+    {{end}}
+  </main>
+
+  <script>
+    // Refresh the card grid every 30 seconds via /api/posts.
+    setInterval(fetchPosts, 30000);
+
+    function fetchPosts() {
+      fetch('/api/posts')
+        .then(function(r) { return r.json(); })
+        .then(function(posts) {
+          renderGrid(posts);
+          document.getElementById('status').textContent =
+            'Last refreshed: ' + new Date().toLocaleTimeString();
+        })
+        .catch(function(err) { console.error('fetchPosts:', err); });
+    }
+
+    function renderGrid(posts) {
+      var grid = document.getElementById('card-grid');
+      if (!posts || posts.length === 0) {
+        grid.innerHTML = '<p class="empty">No posts yet — add a hashtag above to start.</p>';
+        return;
+      }
+      grid.innerHTML = posts.map(function(p) {
+        var media = p.media_type === 'IMAGE'
+          ? '<img src="' + esc(p.media_url) + '" alt="Instagram post" loading="lazy">'
+          : '<div class="media-placeholder">' + esc(p.media_type) + '</div>';
+        var ts = new Date(p.timestamp);
+        var dateStr = ts.toLocaleDateString('en-US', {month:'short', day:'numeric', year:'numeric'});
+        var caption = p.caption ? p.caption.substring(0, 120) + (p.caption.length > 120 ? '…' : '') : '';
+        return '<article class="card">' +
+          media +
+          '<div class="card-body">' +
+            '<span class="badge">#' + esc(p.hashtag) + '</span>' +
+            '<p class="caption">' + esc(caption) + '</p>' +
+            '<div class="card-meta">' +
+              '<time datetime="' + esc(p.timestamp) + '">' + dateStr + '</time>' +
+              '<a href="' + esc(p.permalink) + '" target="_blank" rel="noopener noreferrer">View post</a>' +
+            '</div>' +
+          '</div>' +
+        '</article>';
+      }).join('');
+    }
+
+    function addHashtag() {
+      var input = document.getElementById('hashtag-input');
+      var tag = input.value.replace(/^#/, '').trim();
+      if (!tag) return;
+      fetch('/api/hashtags', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({hashtag: tag})
+      }).then(function(r) {
+        if (r.ok || r.status === 409) {
+          input.value = '';
+          fetchHashtags();
+        }
+      }).catch(function(err) { console.error('addHashtag:', err); });
+    }
+
+    function removeHashtag(tag) {
+      fetch('/api/hashtags/' + encodeURIComponent(tag), {method: 'DELETE'})
+        .then(function() { fetchHashtags(); })
+        .catch(function(err) { console.error('removeHashtag:', err); });
+    }
+
+    function fetchHashtags() {
+      fetch('/api/hashtags')
+        .then(function(r) { return r.json(); })
+        .then(function(tags) {
+          var pills = document.getElementById('pills');
+          if (!tags || tags.length === 0) {
+            pills.innerHTML = '<span style="font-size:.8rem;color:#aaa">No hashtags yet.</span>';
+            return;
+          }
+          pills.innerHTML = tags.map(function(t) {
+            return '<span class="pill">#' + esc(t) +
+              ' <button onclick="removeHashtag(\'' + esc(t) + '\')" title="Stop monitoring">\xd7</button>' +
+              '</span>';
+          }).join('');
+        })
+        .catch(function(err) { console.error('fetchHashtags:', err); });
+    }
+
+    // Enter key submits the hashtag input.
+    document.getElementById('hashtag-input').addEventListener('keydown', function(e) {
+      if (e.key === 'Enter') addHashtag();
+    });
+
+    function esc(s) {
+      if (!s) return '';
+      return String(s)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+    }
+  </script>
+</body>
+</html>

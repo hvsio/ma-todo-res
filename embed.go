@@ -1,0 +1,9 @@
+package main
+
+import "embed"
+
+//go:embed web/templates
+var templateFS embed.FS
+
+//go:embed static
+var staticFS embed.FS

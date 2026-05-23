@@ -1,0 +1,124 @@
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  background: #f6f6f6;
+  color: #222;
+  max-width: 1200px;
+  margin: 2rem auto;
+  padding: 0 1rem;
+}
+
+h1 { font-size: 1.6rem; margin-bottom: 1.5rem; }
+
+/* Admin panel */
+.admin {
+  background: #fff;
+  border-radius: 8px;
+  padding: 1rem 1.25rem;
+  margin-bottom: 2rem;
+  box-shadow: 0 1px 4px rgba(0,0,0,.1);
+}
+.admin h2 { font-size: 1rem; margin-bottom: .75rem; color: #555; }
+.admin-row { display: flex; gap: .5rem; flex-wrap: wrap; align-items: center; }
+.admin input[type=text] {
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  padding: .4rem .75rem;
+  font-size: .9rem;
+  outline: none;
+}
+.admin input[type=text]:focus { border-color: #c05; }
+.admin button.add-btn {
+  background: #c05;
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  padding: .4rem 1rem;
+  font-size: .9rem;
+  cursor: pointer;
+}
+.admin button.add-btn:hover { background: #a04; }
+
+.pills { display: flex; flex-wrap: wrap; gap: .4rem; margin-top: .75rem; }
+.pill {
+  display: inline-flex;
+  align-items: center;
+  gap: .3rem;
+  background: #c05;
+  color: #fff;
+  border-radius: 1rem;
+  padding: .2rem .75rem;
+  font-size: .8rem;
+}
+.pill button {
+  background: none;
+  border: none;
+  color: rgba(255,255,255,.8);
+  cursor: pointer;
+  font-size: .9rem;
+  line-height: 1;
+  padding: 0;
+}
+.pill button:hover { color: #fff; }
+
+/* Status bar */
+.status-bar {
+  font-size: .8rem;
+  color: #888;
+  margin-bottom: 1rem;
+}
+
+/* Card grid */
+.card-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 1.5rem;
+}
+.empty {
+  grid-column: 1 / -1;
+  text-align: center;
+  color: #999;
+  padding: 3rem 0;
+}
+
+.card {
+  background: #fff;
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 2px 8px rgba(0,0,0,.12);
+  display: flex;
+  flex-direction: column;
+}
+.card img {
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  object-fit: cover;
+  display: block;
+}
+.media-placeholder {
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  background: #eee;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: .8rem;
+  color: #aaa;
+  letter-spacing: .05em;
+}
+.card-body { padding: 1rem; flex: 1; display: flex; flex-direction: column; gap: .4rem; }
+.badge {
+  display: inline-block;
+  background: #f0e;
+  color: #a05;
+  border-radius: 4px;
+  padding: 2px 7px;
+  font-size: .72rem;
+  font-weight: 600;
+  align-self: flex-start;
+}
+.caption { font-size: .875rem; color: #444; flex: 1; }
+.card-meta { display: flex; justify-content: space-between; align-items: center; font-size: .75rem; color: #999; margin-top: auto; }
+.card-meta a { color: #c05; text-decoration: none; }
+.card-meta a:hover { text-decoration: underline; }

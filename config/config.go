@@ -3,21 +3,22 @@ package config
 import (
 	"errors"
 	"os"
+	"strings"
 	"time"
 )
 
 type Config struct {
 	AccessToken  string
 	UserID       string
-	Hashtag      string
+	Hashtags     []string
 	PollInterval time.Duration
 	GraphAPIBase string
+	HTTPPort     string
 }
 
 func Load() (*Config, error) {
 	token := os.Getenv("INSTAGRAM_ACCESS_TOKEN")
 	userID := os.Getenv("INSTAGRAM_USER_ID")
-	hashtag := os.Getenv("INSTAGRAM_HASHTAG")
 
 	if token == "" {
 		return nil, errors.New("INSTAGRAM_ACCESS_TOKEN is required")
@@ -25,9 +26,16 @@ func Load() (*Config, error) {
 	if userID == "" {
 		return nil, errors.New("INSTAGRAM_USER_ID is required")
 	}
-	if hashtag == "" {
-		return nil, errors.New("INSTAGRAM_HASHTAG is required")
+
+	var hashtags []string
+	if raw := os.Getenv("INSTAGRAM_HASHTAG"); raw != "" {
+		for _, t := range strings.Split(raw, ",") {
+			if t = strings.TrimSpace(t); t != "" {
+				hashtags = append(hashtags, t)
+			}
+		}
 	}
+	// Hashtags is intentionally optional — users can add them via the admin UI at runtime.
 
 	interval := 5 * time.Minute
 	if raw := os.Getenv("POLL_INTERVAL"); raw != "" {
@@ -43,13 +51,19 @@ func Load() (*Config, error) {
 		base = raw
 	}
 
-	// TODO: support multiple hashtags via comma-separated INSTAGRAM_HASHTAG list
+	port := "8080"
+	if raw := os.Getenv("HTTP_PORT"); raw != "" {
+		port = raw
+	}
+
 	// TODO: load long-lived token expiry and warn when close to 60-day expiration
+
 	return &Config{
 		AccessToken:  token,
 		UserID:       userID,
-		Hashtag:      hashtag,
+		Hashtags:     hashtags,
 		PollInterval: interval,
 		GraphAPIBase: base,
+		HTTPPort:     port,
 	}, nil
 }

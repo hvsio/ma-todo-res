@@ -2,15 +2,17 @@ package main
 
 import (
 	"context"
-	"encoding/json"
+	"io/fs"
 	"log"
+	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
 
 	"github.com/hvsio/ma-todo-res/config"
-	"github.com/hvsio/ma-todo-res/instagram"
-	"github.com/hvsio/ma-todo-res/poller"
+	"github.com/hvsio/ma-todo-res/manager"
+	"github.com/hvsio/ma-todo-res/store"
+	"github.com/hvsio/ma-todo-res/web"
 )
 
 func main() {
@@ -19,30 +21,43 @@ func main() {
 		log.Fatalf("config error: %v", err)
 	}
 
-	client := instagram.NewClient(cfg.GraphAPIBase, cfg.AccessToken, cfg.UserID)
+	st := store.New(store.DefaultCapacity)
+	mgr := manager.New(cfg, st)
 
-	// TODO: replace this log handler with your delivery mechanism, e.g.:
-	//   - HTTP POST to a webhook URL
-	//   - publish to a message queue (Kafka, RabbitMQ, SQS)
-	//   - write to a database
-	handler := func(post instagram.Post) {
-		enc := json.NewEncoder(os.Stdout)
-		enc.SetIndent("", "  ")
-		if err := enc.Encode(post); err != nil {
-			log.Printf("failed to encode post %s: %v", post.ID, err)
+	// Seed hashtags from env var — users can also add/remove via the UI.
+	for _, tag := range cfg.Hashtags {
+		if err := mgr.Add(tag); err != nil {
+			log.Printf("warning: %v", err)
 		}
 	}
 
-	p := poller.New(client, cfg.Hashtag, cfg.PollInterval, handler)
+	tmplFS, err := fs.Sub(templateFS, "web/templates")
+	if err != nil {
+		log.Fatalf("template FS error: %v", err)
+	}
+
+	h, err := web.NewHandler(st, mgr, tmplFS, staticFS)
+	if err != nil {
+		log.Fatalf("handler error: %v", err)
+	}
+
+	mux := http.NewServeMux()
+	h.RegisterRoutes(mux)
+
+	srv := web.New(":"+cfg.HTTPPort, mux)
+	go func() {
+		log.Printf("listening on :%s", cfg.HTTPPort)
+		if err := srv.ListenAndServe(); err != http.ErrServerClosed {
+			log.Fatalf("HTTP server error: %v", err)
+		}
+	}()
 
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
+	<-ctx.Done()
 
-	log.Printf("starting hashtag poller: #%s every %s", cfg.Hashtag, cfg.PollInterval)
-
-	if err := p.Run(ctx); err != nil && err != context.Canceled {
-		log.Fatalf("poller stopped: %v", err)
-	}
-
+	log.Println("shutting down…")
+	web.Shutdown(srv)
+	mgr.Shutdown()
 	log.Println("shutdown complete")
 }
